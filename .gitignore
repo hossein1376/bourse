@@ -1,0 +1,37 @@
+# Build output
+build/
+cmake-build-*/
+
+# C++ object files
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.exe
+*.out
+
+# Compilation database
+compile_commands.json
+
+# Rust
+target/
+
+# Go
+go/bin/
+
+# IDE
+.vscode/
+.idea/
+.zed/
+.cache/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# CMake generated
+CMakeUserPresets.json
