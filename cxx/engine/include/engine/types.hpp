@@ -35,6 +35,7 @@ struct TradeEvent {
   Side taker_side;
   Price price;
   Quantity quantity;
+  std::uint64_t sequence;
 };
 
 struct PriceLevel {

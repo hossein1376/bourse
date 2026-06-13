@@ -576,3 +576,90 @@ TEST(MatchingEngineTest, AmendOrderCrossesSpread) {
   EXPECT_EQ(h.trades[0].price, 10000);
   EXPECT_EQ(h.trades[0].quantity, 5);
 }
+
+TEST(MatchingEngineTest, SequenceStartsAtOne) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].sequence, 1);
+}
+
+TEST(MatchingEngineTest, SequenceIncrementsAcrossOrders) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+  h.engine.process_order(Order{
+      .order_id = 3,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 4,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 3,
+  });
+
+  ASSERT_EQ(h.trades.size(), 2);
+  EXPECT_EQ(h.trades[0].sequence, 1);
+  EXPECT_EQ(h.trades[1].sequence, 2);
+}
+
+TEST(MatchingEngineTest, SequenceSkipsOnRejectedFok) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 5,
+  });
+  // FOK buy 10 — rejected, no trades
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::FOK,
+      .price = 10000,
+      .quantity = 10,
+  });
+  // Market buy 5 — fills against remaining 5
+  h.engine.process_order(Order{
+      .order_id = 3,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].sequence, 1);
+}

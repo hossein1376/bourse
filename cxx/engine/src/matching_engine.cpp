@@ -80,6 +80,7 @@ bool MatchingEngine::fill_level(Order &incoming, Order &resting) {
         .taker_side = incoming.side,
         .price = resting.price,
         .quantity = resting.quantity,
+        .sequence = next_sequence(),
     });
     incoming.quantity -= resting.quantity;
     incoming.filled += resting.quantity;
@@ -91,6 +92,7 @@ bool MatchingEngine::fill_level(Order &incoming, Order &resting) {
       .taker_side = incoming.side,
       .price = resting.price,
       .quantity = incoming.quantity,
+      .sequence = next_sequence(),
   });
   incoming.filled += incoming.quantity;
   resting.filled += incoming.quantity;
