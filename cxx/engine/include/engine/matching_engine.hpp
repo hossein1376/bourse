@@ -10,10 +10,10 @@ public:
   using TradeCallback = std::function<void(const TradeEvent &)>;
 
   explicit MatchingEngine(TradeCallback on_trade);
-
-  void process_order(const Order &order);
-
   const OrderBook &book() const { return book_; }
+  void process_order(const Order &order);
+  bool cancel_order(OrderID order_id);
+  bool amend_order(OrderID old_id, const Order &new_order);
 
 private:
   void match_against_book(Order &incoming);

@@ -480,3 +480,99 @@ TEST(MatchingEngineTest, FokSellFillsEntirely) {
   EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Sell));
 }
+
+TEST(MatchingEngineTest, CancelRestingLimitOrder) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+
+  EXPECT_TRUE(h.engine.cancel_order(1));
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
+}
+
+TEST(MatchingEngineTest, CancelOrderFromAskSide) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+
+  EXPECT_TRUE(h.engine.cancel_order(1));
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
+}
+
+TEST(MatchingEngineTest, CancelNonExistentOrder) {
+  TestHarness h;
+  EXPECT_FALSE(h.engine.cancel_order(999));
+}
+
+TEST(MatchingEngineTest, AmendOrderChangesPrice) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+
+  EXPECT_TRUE(h.engine.amend_order(1, Order{
+                                          .order_id = 2,
+                                          .side = Side::Buy,
+                                          .type = OrderType::Limit,
+                                          .price = 10100,
+                                          .quantity = 10,
+                                      }));
+
+  EXPECT_FALSE(h.engine.book().empty(Side::Buy));
+  EXPECT_EQ(h.engine.book().best_bid().price, 10100);
+}
+
+TEST(MatchingEngineTest, AmendNonExistentOrder) {
+  TestHarness h;
+  EXPECT_FALSE(h.engine.amend_order(999, Order{
+                                             .order_id = 1,
+                                             .side = Side::Buy,
+                                             .type = OrderType::Limit,
+                                             .price = 10000,
+                                             .quantity = 10,
+                                         }));
+}
+
+TEST(MatchingEngineTest, AmendOrderCrossesSpread) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Limit,
+      .price = 9900,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.engine.amend_order(2, Order{
+                                          .order_id = 3,
+                                          .side = Side::Buy,
+                                          .type = OrderType::Limit,
+                                          .price = 10100,
+                                          .quantity = 5,
+                                      }));
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 5);
+}

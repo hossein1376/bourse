@@ -110,4 +110,20 @@ bool MatchingEngine::can_fully_fill(const Order &order) const {
   return total >= order.quantity;
 }
 
+bool MatchingEngine::cancel_order(OrderID order_id) {
+  try {
+    book_.cancel_order(order_id);
+    return true;
+  } catch (const std::runtime_error &) {
+    return false;
+  }
+}
+
+bool MatchingEngine::amend_order(OrderID old_id, const Order &new_order) {
+  if (!cancel_order(old_id))
+    return false;
+  process_order(new_order);
+  return true;
+}
+
 } // namespace engine
