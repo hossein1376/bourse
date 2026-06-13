@@ -321,15 +321,77 @@ TEST(MatchingEngineTest, LimitBuyCrossesMultiLevel) {
 }
 
 TEST(MatchingEngineTest, IocPartialFill) {
-  // Add a sell limit order at 10000, qty 10
-  // Process a buy IOC at 10000, qty 20
-  // Assert: trade event with qty=10
-  // Assert: no resting buy order (remainder was cancelled)
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::IOC,
+      .price = 10000,
+      .quantity = 20,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 10);
+
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
 TEST(MatchingEngineTest, IocNoLiquidity) {
-  // Process a buy IOC at 10000, qty 5 on empty book
-  // Assert: no trade events
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::IOC,
+      .price = 10000,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+}
+
+TEST(MatchingEngineTest, IocSellNoLiquidity) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::IOC,
+      .price = 10000,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+}
+
+TEST(MatchingEngineTest, IocPriceNotMet) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::IOC,
+      .price = 9900,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+  EXPECT_FALSE(h.engine.book().empty(Side::Sell));
+  EXPECT_EQ(h.engine.book().best_ask().quantity, 10);
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
 TEST(MatchingEngineTest, FokFillsEntirely) {
