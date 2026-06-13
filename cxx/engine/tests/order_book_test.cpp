@@ -14,10 +14,11 @@ TEST(OrderBookTest, BestBidAfterAdd) {
       .quantity = 10,
   });
 
-  Order best_bid = book.best_bid();
-  EXPECT_EQ(best_bid.order_id, 1);
-  EXPECT_EQ(best_bid.price, 1000);
-  EXPECT_EQ(best_bid.quantity, 10);
+  auto best_bid = book.best_bid();
+  ASSERT_TRUE(best_bid.has_value());
+  EXPECT_EQ(best_bid->order_id, 1);
+  EXPECT_EQ(best_bid->price, 1000);
+  EXPECT_EQ(best_bid->quantity, 10);
 }
 
 TEST(OrderBookTest, BestAskAfterAdd) {
@@ -30,10 +31,11 @@ TEST(OrderBookTest, BestAskAfterAdd) {
       .quantity = 10,
   });
 
-  Order best_ask = book.best_ask();
-  EXPECT_EQ(best_ask.order_id, 1);
-  EXPECT_EQ(best_ask.price, 1000);
-  EXPECT_EQ(best_ask.quantity, 10);
+  auto best_ask = book.best_ask();
+  ASSERT_TRUE(best_ask.has_value());
+  EXPECT_EQ(best_ask->order_id, 1);
+  EXPECT_EQ(best_ask->price, 1000);
+  EXPECT_EQ(best_ask->quantity, 10);
 }
 
 TEST(OrderBookTest, BestBidReturnsHighestPrice) {
@@ -54,10 +56,11 @@ TEST(OrderBookTest, BestBidReturnsHighestPrice) {
       .quantity = 5,
   });
 
-  Order best_bid = book.best_bid();
-  EXPECT_EQ(best_bid.order_id, 2);
-  EXPECT_EQ(best_bid.price, 10000);
-  EXPECT_EQ(best_bid.quantity, 5);
+  auto best_bid = book.best_bid();
+  ASSERT_TRUE(best_bid.has_value());
+  EXPECT_EQ(best_bid->order_id, 2);
+  EXPECT_EQ(best_bid->price, 10000);
+  EXPECT_EQ(best_bid->quantity, 5);
 }
 
 TEST(OrderBookTest, BestAskReturnsLowestPrice) {
@@ -78,10 +81,11 @@ TEST(OrderBookTest, BestAskReturnsLowestPrice) {
       .quantity = 5,
   });
 
-  Order best_ask = book.best_ask();
-  EXPECT_EQ(best_ask.order_id, 2);
-  EXPECT_EQ(best_ask.price, 10000);
-  EXPECT_EQ(best_ask.quantity, 5);
+  auto best_ask = book.best_ask();
+  ASSERT_TRUE(best_ask.has_value());
+  EXPECT_EQ(best_ask->order_id, 2);
+  EXPECT_EQ(best_ask->price, 10000);
+  EXPECT_EQ(best_ask->quantity, 5);
 }
 
 TEST(OrderBookTest, CancelOrderRemovesItFromBestBid) {
@@ -96,20 +100,21 @@ TEST(OrderBookTest, CancelOrderRemovesItFromBestBid) {
       .price = 10000,
       .quantity = 5,
   });
-  Order best_bid = book.best_bid();
-  EXPECT_EQ(best_bid.order_id, 1);
-  EXPECT_EQ(best_bid.price, 10000);
-  EXPECT_EQ(best_bid.quantity, 5);
+  auto best_bid = book.best_bid();
+  ASSERT_TRUE(best_bid.has_value());
+  EXPECT_EQ(best_bid->order_id, 1);
+  EXPECT_EQ(best_bid->price, 10000);
+  EXPECT_EQ(best_bid->quantity, 5);
 
   // Cancel order 1
-  book.cancel_order(best_bid.order_id);
+  book.cancel_order(best_bid->order_id);
 
-  // Assert best_bid() throws "No bids"
-  EXPECT_THROW(book.best_bid(), std::runtime_error);
+  // Assert best_bid() returns empty
+  EXPECT_FALSE(book.best_bid().has_value());
 }
 
-TEST(OrderBookTest, CancelNonExistentOrderThrows) {
+TEST(OrderBookTest, CancelNonExistentOrderReturnsFalse) {
   OrderBook book;
 
-  EXPECT_THROW(book.cancel_order(999), std::runtime_error);
+  EXPECT_FALSE(book.cancel_order(999));
 }

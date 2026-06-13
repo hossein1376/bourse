@@ -38,7 +38,8 @@ TEST(MatchingEngineTest, MarketBuyFillsLimitSell) {
   EXPECT_EQ(h.trades[0].maker_order_id, 1);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 5);
+  EXPECT_EQ(h.engine.book().best_ask()->filled, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
@@ -79,7 +80,7 @@ TEST(MatchingEngineTest, MarketSellFillsLimitBuy) {
   EXPECT_EQ(h.trades[0].maker_order_id, 1);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->quantity, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Sell));
 }
 
@@ -141,8 +142,8 @@ TEST(MatchingEngineTest, MarketBuyCrossesMultiLevel) {
   EXPECT_EQ(h.trades[1].maker_order_id, 2);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().price, 10100);
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 2);
+  EXPECT_EQ(h.engine.book().best_ask()->price, 10100);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 2);
   EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
@@ -171,8 +172,9 @@ TEST(MatchingEngineTest, LimitBuyCrossesSpreadPartialFill) {
   EXPECT_EQ(h.trades[0].maker_order_id, 1);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().price, 10000);
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_ask()->price, 10000);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 5);
+  EXPECT_EQ(h.engine.book().best_ask()->filled, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
@@ -200,8 +202,8 @@ TEST(MatchingEngineTest, LimitBuyCrossesSpreadPartialFillWithRest) {
 
   EXPECT_TRUE(h.engine.book().empty(Side::Sell));
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().price, 10100);
-  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->price, 10100);
+  EXPECT_EQ(h.engine.book().best_bid()->quantity, 5);
 }
 
 TEST(MatchingEngineTest, LimitBuyDoesNotCrossSpread) {
@@ -223,8 +225,8 @@ TEST(MatchingEngineTest, LimitBuyDoesNotCrossSpread) {
 
   EXPECT_TRUE(h.trades.empty());
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().price, 9900);
-  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->price, 9900);
+  EXPECT_EQ(h.engine.book().best_bid()->quantity, 5);
 }
 
 TEST(MatchingEngineTest, LimitSellCrossesSpread) {
@@ -252,8 +254,9 @@ TEST(MatchingEngineTest, LimitSellCrossesSpread) {
   EXPECT_EQ(h.trades[0].maker_order_id, 1);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().price, 10000);
-  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->price, 10000);
+  EXPECT_EQ(h.engine.book().best_bid()->quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->filled, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Sell));
 }
 
@@ -315,8 +318,8 @@ TEST(MatchingEngineTest, LimitBuyCrossesMultiLevel) {
   EXPECT_EQ(h.trades[1].maker_order_id, 2);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().price, 10100);
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 2);
+  EXPECT_EQ(h.engine.book().best_ask()->price, 10100);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 2);
   EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
@@ -390,7 +393,7 @@ TEST(MatchingEngineTest, IocPriceNotMet) {
 
   EXPECT_TRUE(h.trades.empty());
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 10);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 10);
   EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
@@ -438,7 +441,7 @@ TEST(MatchingEngineTest, FokInsufficientLiquidity) {
 
   EXPECT_TRUE(h.trades.empty());
   EXPECT_FALSE(h.engine.book().empty(Side::Sell));
-  EXPECT_EQ(h.engine.book().best_ask().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_ask()->quantity, 5);
 }
 
 TEST(MatchingEngineTest, FokNoLiquidity) {
@@ -477,7 +480,7 @@ TEST(MatchingEngineTest, FokSellFillsEntirely) {
   EXPECT_EQ(h.trades[0].quantity, 5);
 
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_EQ(h.engine.book().best_bid()->quantity, 5);
   EXPECT_TRUE(h.engine.book().empty(Side::Sell));
 }
 
@@ -533,7 +536,7 @@ TEST(MatchingEngineTest, AmendOrderChangesPrice) {
                                       }));
 
   EXPECT_FALSE(h.engine.book().empty(Side::Buy));
-  EXPECT_EQ(h.engine.book().best_bid().price, 10100);
+  EXPECT_EQ(h.engine.book().best_bid()->price, 10100);
 }
 
 TEST(MatchingEngineTest, AmendNonExistentOrder) {

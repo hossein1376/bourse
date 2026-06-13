@@ -66,14 +66,14 @@ void print_summary(const CLIArgs &, const Stats &stats, const OrderBook &book,
 
   std::cout << "\nFinal book:\n";
   if (!book.empty(Side::Buy))
-    std::cout << "  Best bid: " << book.best_bid().price << " @ "
-              << book.best_bid().quantity << "\n";
+    std::cout << "  Best bid: " << book.best_bid()->price << " @ "
+              << book.best_bid()->quantity << "\n";
   else
     std::cout << "  Best bid: none\n";
 
   if (!book.empty(Side::Sell))
-    std::cout << "  Best ask: " << book.best_ask().price << " @ "
-              << book.best_ask().quantity << "\n";
+    std::cout << "  Best ask: " << book.best_ask()->price << " @ "
+              << book.best_ask()->quantity << "\n";
   else
     std::cout << "  Best ask: none\n";
 }

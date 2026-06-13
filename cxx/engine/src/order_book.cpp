@@ -1,10 +1,14 @@
 #include "engine/order_book.hpp"
 #include "engine/types.hpp"
+#include <optional>
+#include <stdexcept>
 
 namespace engine {
 OrderBook::OrderBook() : bids(), asks(), index() {}
 
-void OrderBook::add_order(Order order) {
+bool OrderBook::add_order(Order order) {
+  if (index.find(order.order_id) != index.end())
+    return false;
   if (order.side == Side::Buy) {
     auto p = bids.try_emplace(order.price, PriceLevel{order.price, {order}});
     if (!p.second) {
@@ -18,13 +22,13 @@ void OrderBook::add_order(Order order) {
     }
     index.insert({order.order_id, std::prev(p.first->second.orders.end())});
   }
+  return true;
 }
 
-void OrderBook::cancel_order(OrderID order_id) {
+bool OrderBook::cancel_order(OrderID order_id) {
   auto it = index.find(order_id);
-  if (it == index.end()) {
-    throw std::runtime_error("Order not found");
-  }
+  if (it == index.end())
+    return false;
 
   if (it->second->side == Side::Buy) {
     auto p = bids.find(it->second->price);
@@ -45,19 +49,18 @@ void OrderBook::cancel_order(OrderID order_id) {
       index.erase(order_id);
     }
   }
+  return true;
 }
 
-Order OrderBook::best_bid() const {
-  if (bids.empty()) {
-    throw std::runtime_error("No bids");
-  }
+std::optional<Order> OrderBook::best_bid() const {
+  if (bids.empty())
+    return std::nullopt;
   return bids.begin()->second.orders.front();
 }
 
-Order OrderBook::best_ask() const {
-  if (asks.empty()) {
-    throw std::runtime_error("No asks");
-  }
+std::optional<Order> OrderBook::best_ask() const {
+  if (asks.empty())
+    return std::nullopt;
   return asks.begin()->second.orders.front();
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/types.hpp"
+#include <optional>
 #include <unordered_map>
 
 namespace engine {
@@ -8,10 +9,10 @@ namespace engine {
 class OrderBook {
 public:
   OrderBook();
-  void add_order(Order order);
-  void cancel_order(OrderID order_id);
-  Order best_bid() const;
-  Order best_ask() const;
+  bool add_order(Order order);
+  bool cancel_order(OrderID order_id);
+  std::optional<Order> best_bid() const;
+  std::optional<Order> best_ask() const;
   Order &front_order(Side side);
   void pop_front(Side side);
   bool empty(Side side) const;

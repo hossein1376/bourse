@@ -3,10 +3,21 @@
 
 namespace engine {
 
+namespace {
+bool crosses(const Order &incoming, const Order &resting) {
+  return (incoming.side == Side::Buy && incoming.price >= resting.price) ||
+         (incoming.side == Side::Sell && incoming.price <= resting.price);
+}
+} // namespace
+
 MatchingEngine::MatchingEngine(TradeCallback on_trade)
     : book_(), on_trade_(std::move(on_trade)) {}
 
 void MatchingEngine::process_order(const Order &order) {
+  if (order.quantity == 0)
+    return;
+  if (order.type == OrderType::Limit && order.price == 0)
+    return;
   Order incoming = order;
   if (incoming.type == OrderType::FOK && !can_fully_fill(incoming)) {
     return;
@@ -20,8 +31,7 @@ void MatchingEngine::match_against_book(Order &incoming) {
   case OrderType::Limit:
     while (incoming.quantity > 0 && !book_.empty(otherside)) {
       Order &resting = book_.front_order(otherside);
-      if ((incoming.side == Side::Buy && incoming.price >= resting.price) ||
-          (incoming.side == Side::Sell && incoming.price <= resting.price)) {
+      if (crosses(incoming, resting)) {
         if (fill_level(incoming, resting)) {
           book_.pop_front(otherside);
         }
@@ -45,8 +55,7 @@ void MatchingEngine::match_against_book(Order &incoming) {
   case OrderType::IOC:
     while (incoming.quantity > 0 && !book_.empty(otherside)) {
       Order &resting = book_.front_order(otherside);
-      if ((incoming.side == Side::Buy && incoming.price >= resting.price) ||
-          (incoming.side == Side::Sell && incoming.price <= resting.price)) {
+      if (crosses(incoming, resting)) {
         if (fill_level(incoming, resting)) {
           book_.pop_front(otherside);
         }
@@ -59,8 +68,7 @@ void MatchingEngine::match_against_book(Order &incoming) {
   case OrderType::FOK:
     while (incoming.quantity > 0 && !book_.empty(otherside)) {
       Order &resting = book_.front_order(otherside);
-      if ((incoming.side == Side::Buy && incoming.price >= resting.price) ||
-          (incoming.side == Side::Sell && incoming.price <= resting.price)) {
+      if (crosses(incoming, resting)) {
         if (fill_level(incoming, resting)) {
           book_.pop_front(otherside);
         }
@@ -113,12 +121,7 @@ bool MatchingEngine::can_fully_fill(const Order &order) const {
 }
 
 bool MatchingEngine::cancel_order(OrderID order_id) {
-  try {
-    book_.cancel_order(order_id);
-    return true;
-  } catch (const std::runtime_error &) {
-    return false;
-  }
+  return book_.cancel_order(order_id);
 }
 
 bool MatchingEngine::amend_order(OrderID old_id, const Order &new_order) {
