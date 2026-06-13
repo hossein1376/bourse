@@ -34,6 +34,9 @@ public:
   }
 
 private:
+  // TODO: Replace map-of-lists with a custom doubly-linked list per side
+  //       for O(1) price level lookup and better cache locality (PLAN.md §192).
+  //       Keep std::map for now — correctness first, optimization later.
   std::map<Price, PriceLevel, std::greater<Price>> bids;
   std::map<Price, PriceLevel, std::less<Price>> asks;
   std::unordered_map<OrderID, std::list<Order>::iterator> index;
