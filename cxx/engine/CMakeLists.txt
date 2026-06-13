@@ -8,3 +8,4 @@ target_include_directories(engine PUBLIC include)
 target_compile_options(engine PRIVATE -Wall -Wextra -Wpedantic)
 
 add_subdirectory(tests)
+add_subdirectory(tools)
