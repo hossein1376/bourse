@@ -18,6 +18,7 @@ public:
 private:
   void match_against_book(Order &incoming);
   bool can_fully_fill(const Order &order) const;
+  bool fill_level(Order &incoming, Order &resting);
 
   OrderBook book_;
   TradeCallback on_trade_;
