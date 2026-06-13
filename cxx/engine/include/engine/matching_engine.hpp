@@ -5,6 +5,22 @@
 
 namespace engine {
 
-class MatchingEngine {};
+class MatchingEngine {
+public:
+  using TradeCallback = std::function<void(const TradeEvent &)>;
+
+  explicit MatchingEngine(TradeCallback on_trade);
+
+  void process_order(const Order &order);
+
+  const OrderBook &book() const { return book_; }
+
+private:
+  void match_against_book(Order &incoming);
+  bool can_fully_fill(const Order &order) const;
+
+  OrderBook book_;
+  TradeCallback on_trade_;
+};
 
 } // namespace engine

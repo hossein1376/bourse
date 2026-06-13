@@ -7,6 +7,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(engine_test
     order_book_test.cpp
+    matching_engine_test.cpp
 )
 
 target_link_libraries(engine_test PRIVATE engine GTest::gtest_main)
