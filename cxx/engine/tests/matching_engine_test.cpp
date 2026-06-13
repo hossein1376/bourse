@@ -395,15 +395,88 @@ TEST(MatchingEngineTest, IocPriceNotMet) {
 }
 
 TEST(MatchingEngineTest, FokFillsEntirely) {
-  // Add a sell limit order at 10000, qty 10
-  // Process a buy FOK at 10000, qty 10
-  // Assert: trade event with qty=10
-  // Assert: sell order consumed
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::FOK,
+      .price = 10000,
+      .quantity = 10,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 10);
+
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
 TEST(MatchingEngineTest, FokInsufficientLiquidity) {
-  // Add a sell limit order at 10000, qty 5
-  // Process a buy FOK at 10000, qty 10
-  // Assert: no trade events (order entirely rejected)
-  // Assert: sell order still in book
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 5,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::FOK,
+      .price = 10000,
+      .quantity = 10,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+  EXPECT_FALSE(h.engine.book().empty(Side::Sell));
+  EXPECT_EQ(h.engine.book().best_ask().quantity, 5);
+}
+
+TEST(MatchingEngineTest, FokNoLiquidity) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::FOK,
+      .price = 10000,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
+}
+
+TEST(MatchingEngineTest, FokSellFillsEntirely) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Sell,
+      .type = OrderType::FOK,
+      .price = 9900,
+      .quantity = 5,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 5);
+
+  EXPECT_FALSE(h.engine.book().empty(Side::Buy));
+  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
 }

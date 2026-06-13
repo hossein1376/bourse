@@ -16,6 +16,23 @@ public:
   void pop_front(Side side);
   bool empty(Side side) const;
 
+  template <typename F>
+  void for_each_level(Side side, Price limit, F &&fn) const {
+    if (side == Side::Buy) {
+      for (const auto &[price, level] : bids) {
+        if (price < limit)
+          break;
+        fn(price, level.orders);
+      }
+    } else {
+      for (const auto &[price, level] : asks) {
+        if (price > limit)
+          break;
+        fn(price, level.orders);
+      }
+    }
+  }
+
 private:
   std::map<Price, PriceLevel, std::greater<Price>> bids;
   std::map<Price, PriceLevel, std::less<Price>> asks;
