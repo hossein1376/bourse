@@ -2,7 +2,6 @@
 
 #include "engine/types.hpp"
 #include <unordered_map>
-#include <functional>
 
 namespace engine {
 
@@ -11,8 +10,11 @@ public:
   OrderBook();
   void add_order(Order order);
   void cancel_order(OrderID order_id);
-  Order best_bid();
-  Order best_ask();
+  Order best_bid() const;
+  Order best_ask() const;
+  Order &front_order(Side side);
+  void pop_front(Side side);
+  bool empty(Side side) const;
 
 private:
   std::map<Price, PriceLevel, std::greater<Price>> bids;
