@@ -53,6 +53,36 @@ void MatchingEngine::match_against_book(Order &incoming) {
     break;
 
   case OrderType::Market:
+    while (incoming.quantity > 0 && !book_.empty(otherside)) {
+      Order &resting = book_.front_order(otherside);
+      if (incoming.quantity >= resting.quantity) {
+        on_trade_(TradeEvent{
+            .taker_order_id = incoming.order_id,
+            .maker_order_id = resting.order_id,
+            .taker_side = incoming.side,
+            .price = resting.price,
+            .quantity = resting.quantity,
+        });
+        incoming.quantity -= resting.quantity;
+        incoming.filled += resting.quantity;
+        book_.pop_front(otherside);
+        continue;
+      }
+      on_trade_(TradeEvent{
+          .taker_order_id = incoming.order_id,
+          .maker_order_id = resting.order_id,
+          .taker_side = incoming.side,
+          .price = resting.price,
+          .quantity = incoming.quantity,
+      });
+      incoming.filled += incoming.quantity;
+      resting.filled += incoming.quantity;
+      resting.quantity = resting.quantity - incoming.quantity;
+      incoming.quantity = 0;
+    }
+
+    break;
+
   case OrderType::IOC:
   case OrderType::FOK:
     break;

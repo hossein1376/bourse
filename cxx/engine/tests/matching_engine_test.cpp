@@ -15,14 +15,135 @@ struct TestHarness {
 };
 
 TEST(MatchingEngineTest, MarketBuyFillsLimitSell) {
-  // Add a sell limit order at 10000, qty 10
-  // Process a market buy for qty 5
-  // Assert: 1 trade event, correct price/qty/sides
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 5);
+  EXPECT_EQ(h.trades[0].taker_side, Side::Buy);
+  EXPECT_EQ(h.trades[0].maker_order_id, 1);
+
+  EXPECT_FALSE(h.engine.book().empty(Side::Sell));
+  EXPECT_EQ(h.engine.book().best_ask().quantity, 5);
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
 TEST(MatchingEngineTest, MarketBuyEmptyBookNoCrash) {
-  // Process a market buy with no orders in book
-  // Assert: no trade events, no crash
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  EXPECT_TRUE(h.trades.empty());
+}
+
+TEST(MatchingEngineTest, MarketSellFillsLimitBuy) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Buy,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Sell,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 5);
+  EXPECT_EQ(h.trades[0].taker_side, Side::Sell);
+  EXPECT_EQ(h.trades[0].maker_order_id, 1);
+
+  EXPECT_FALSE(h.engine.book().empty(Side::Buy));
+  EXPECT_EQ(h.engine.book().best_bid().quantity, 5);
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
+}
+
+TEST(MatchingEngineTest, MarketBuyPartialFill) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 15,
+  });
+
+  ASSERT_EQ(h.trades.size(), 1);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 10);
+
+  EXPECT_TRUE(h.engine.book().empty(Side::Sell));
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
+}
+
+TEST(MatchingEngineTest, MarketBuyCrossesMultiLevel) {
+  TestHarness h;
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 5,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10100,
+      .quantity = 5,
+  });
+  h.engine.process_order(Order{
+      .order_id = 3,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 8,
+  });
+
+  ASSERT_EQ(h.trades.size(), 2);
+  EXPECT_EQ(h.trades[0].price, 10000);
+  EXPECT_EQ(h.trades[0].quantity, 5);
+  EXPECT_EQ(h.trades[0].maker_order_id, 1);
+  EXPECT_EQ(h.trades[1].price, 10100);
+  EXPECT_EQ(h.trades[1].quantity, 3);
+  EXPECT_EQ(h.trades[1].maker_order_id, 2);
+
+  EXPECT_FALSE(h.engine.book().empty(Side::Sell));
+  EXPECT_EQ(h.engine.book().best_ask().price, 10100);
+  EXPECT_EQ(h.engine.book().best_ask().quantity, 2);
+  EXPECT_TRUE(h.engine.book().empty(Side::Buy));
 }
 
 TEST(MatchingEngineTest, LimitBuyCrossesSpreadPartialFill) {
