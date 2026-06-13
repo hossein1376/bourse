@@ -1,5 +1,4 @@
 #include "engine/matching_engine.hpp"
-#include "engine/order_book.hpp"
 #include "engine/types.hpp"
 
 namespace engine {
@@ -16,10 +15,7 @@ void MatchingEngine::match_against_book(Order &incoming) {
   Side otherside = incoming.side == Side::Buy ? Side::Sell : Side::Buy;
   switch (incoming.type) {
   case OrderType::Limit:
-    while (incoming.quantity > 0) {
-      if (book_.empty(otherside)) {
-        break;
-      }
+    while (incoming.quantity > 0 && !book_.empty(otherside)) {
       Order &resting = book_.front_order(otherside);
       if ((incoming.side == Side::Buy && incoming.price >= resting.price) ||
           (incoming.side == Side::Sell && incoming.price <= resting.price)) {
@@ -47,9 +43,8 @@ void MatchingEngine::match_against_book(Order &incoming) {
         resting.filled += incoming.quantity;
         resting.quantity = resting.quantity - incoming.quantity;
         incoming.quantity = 0;
-      } else {
-        break;
       }
+      break;
     }
 
     if (incoming.quantity > 0) {
