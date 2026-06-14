@@ -1,0 +1,12 @@
+namespace engine.schema;
+
+table TradeEvent {
+  taker_order_id: uint64;
+  maker_order_id: uint64;
+  taker_side: uint8;
+  price: uint64;
+  quantity: uint64;
+  sequence: uint64;
+}
+
+root_type TradeEvent;

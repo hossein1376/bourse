@@ -4,3 +4,5 @@ add_executable(order_generator
 
 target_link_libraries(order_generator PRIVATE engine)
 target_compile_options(order_generator PRIVATE -Wall -Wextra -Wpedantic)
+
+add_subdirectory(kafka_engine)

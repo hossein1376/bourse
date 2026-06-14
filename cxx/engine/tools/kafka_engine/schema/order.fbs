@@ -1,0 +1,11 @@
+namespace engine.schema;
+
+table Order {
+  order_id: uint64;
+  side: uint8;
+  type: uint8;
+  price: uint64;
+  quantity: uint64;
+}
+
+root_type Order;

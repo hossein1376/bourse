@@ -1,0 +1,13 @@
+namespace engine.schema;
+
+table Level {
+  price: uint64;
+  quantity: uint64;
+}
+
+table BookUpdate {
+  bid_levels: [Level];
+  ask_levels: [Level];
+}
+
+root_type BookUpdate;
