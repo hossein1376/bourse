@@ -22,6 +22,9 @@ target/
 # Go
 go/bin/
 
+# Python
+/.venv
+
 # IDE
 .vscode/
 .idea/
@@ -36,3 +39,8 @@ go/bin/
 
 # CMake generated
 CMakeUserPresets.json
+
+# Plotting output
+*.png
+*.pdf
+*.csv
