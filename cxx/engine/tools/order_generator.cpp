@@ -47,6 +47,12 @@ CLIArgs parse_args(int argc, char *argv[]) {
       args.snapshot_interval = std::stoi(next());
     else if (flag == "--snapshot-output")
       args.snapshot_path = next();
+    else if (flag == "--cancel-pct")
+      args.cancel_pct = std::stoi(next());
+    else if (flag == "--impact")
+      args.impact_divisor = std::stoi(next());
+    else if (flag == "--spread-vol")
+      args.spread_vol = std::stoi(next());
   }
   return args;
 }
@@ -109,13 +115,17 @@ int main(int argc, char *argv[]) {
   std::normal_distribution<double> price_drift(0.0, args.volatility);
   std::uniform_int_distribution<Price> jitter(0, args.spread);
 
-  // Volume
-  std::poisson_distribution<Quantity> volume_dist(args.avg_volume);
+  // Volume (log-normal for realistic size distribution)
+  std::lognormal_distribution<double> volume_dist(std::log(args.avg_volume), 1.0);
 
   // Inter-arrival
   std::exponential_distribution<double> arrival_dist(args.arrival);
 
+  // Cancellation
+  std::uniform_real_distribution<double> cancel_dist(0, 100);
+
   engine::Stats stats;
+  Quantity buy_vol = 0, sell_vol = 0;
 
   // CSV output
   std::ofstream csv;
@@ -128,6 +138,11 @@ int main(int argc, char *argv[]) {
     stats.trades_emitted++;
     stats.total_trade_qty += t.quantity;
     stats.total_price_qty += t.price * t.quantity;
+
+    if (t.taker_side == engine::Side::Buy)
+      buy_vol += t.quantity;
+    else
+      sell_vol += t.quantity;
 
     if (csv.is_open()) {
       csv << t.taker_order_id << "," << t.maker_order_id << ","
@@ -178,8 +193,14 @@ int main(int argc, char *argv[]) {
       price = mid + half_spread + j;
     }
 
+    // Vary spread for next iteration
+    if (args.spread_vol > 0) {
+      int change = (rng() % (2 * args.spread_vol + 1)) - args.spread_vol;
+      args.spread = std::max<Price>(2, args.spread + change);
+    }
+
     // Generate quantity
-    engine::Quantity qty = std::max<engine::Quantity>(1, volume_dist(rng));
+    engine::Quantity qty = std::max<engine::Quantity>(1, (Quantity)std::round(volume_dist(rng)));
 
     engine.process_order(engine::Order{
         .order_id = next_id,
@@ -191,14 +212,58 @@ int main(int argc, char *argv[]) {
 
     stats.orders_submitted++;
 
-    if (args.snapshot_interval > 0 && stats.orders_submitted % args.snapshot_interval == 0) {
+    // Price impact from fill imbalance
+    if (args.impact_divisor > 0 && (buy_vol > 0 || sell_vol > 0)) {
+      if (buy_vol > sell_vol) {
+        Quantity net = buy_vol - sell_vol;
+        Price move = std::max<Price>(1, net / args.impact_divisor);
+        mid += move;
+      } else {
+        Quantity net = sell_vol - buy_vol;
+        Price move = std::max<Price>(1, net / args.impact_divisor);
+        mid = mid > move ? mid - move : 1;
+      }
+      buy_vol = sell_vol = 0;
+    }
+
+    // Cancel best orders with some probability
+    if (args.cancel_pct > 0) {
+      if (!engine.book().empty(engine::Side::Buy) &&
+          cancel_dist(rng) < args.cancel_pct)
+        engine.cancel_order(engine.book().best_bid()->order_id);
+      if (!engine.book().empty(engine::Side::Sell) &&
+          cancel_dist(rng) < args.cancel_pct)
+        engine.cancel_order(engine.book().best_ask()->order_id);
+    }
+
+    // Keep book tight: cancel orders trailing behind the mid price
+    if (!engine.book().empty(engine::Side::Buy)) {
+      auto bid = engine.book().best_bid();
+      Price limit = mid > (Price)(args.spread * 2) ? mid - (Price)(args.spread * 2) : 0;
+      if (bid->price < limit)
+        engine.cancel_order(bid->order_id);
+    }
+    if (!engine.book().empty(engine::Side::Sell)) {
+      auto ask = engine.book().best_ask();
+      if (ask->price > mid + (Price)(args.spread * 2))
+        engine.cancel_order(ask->order_id);
+    }
+
+    if (args.snapshot_interval > 0 &&
+        stats.orders_submitted % args.snapshot_interval == 0) {
       auto best_bid = engine.book().best_bid();
       auto best_ask = engine.book().best_ask();
       snap_csv << stats.orders_submitted << ","
-               << (best_bid.has_value() ? std::to_string(best_bid->price) : "") << ","
-               << (best_bid.has_value() ? std::to_string(best_bid->quantity) : "") << ","
-               << (best_ask.has_value() ? std::to_string(best_ask->price) : "") << ","
-               << (best_ask.has_value() ? std::to_string(best_ask->quantity) : "") << ","
+               << (best_bid.has_value() ? std::to_string(best_bid->price) : "")
+               << ","
+               << (best_bid.has_value() ? std::to_string(best_bid->quantity)
+                                        : "")
+               << ","
+               << (best_ask.has_value() ? std::to_string(best_ask->price) : "")
+               << ","
+               << (best_ask.has_value() ? std::to_string(best_ask->quantity)
+                                        : "")
+               << ","
                << (best_bid.has_value() && best_ask.has_value()
                        ? std::to_string(best_ask->price - best_bid->price)
                        : "")
@@ -210,6 +275,7 @@ int main(int argc, char *argv[]) {
 
   if (args.snapshot_interval > 0) {
     std::cout << "\nSnapshots written to " << args.snapshot_path << "\n";
-    std::cout << "Plot with: scripts/run_generator.sh plot " << args.snapshot_path << "\n";
+    std::cout << "Plot with: scripts/run_generator.sh plot "
+              << args.snapshot_path << "\n";
   }
 }

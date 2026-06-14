@@ -21,6 +21,9 @@ struct CLIArgs {
   std::string output_path;
   int snapshot_interval = 0;
   std::string snapshot_path;
+  int cancel_pct = 3;
+  int impact_divisor = 300;
+  int spread_vol = 2;
 };
 
 struct Stats {

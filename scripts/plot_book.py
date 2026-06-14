@@ -38,6 +38,9 @@ def main():
         print("Empty snapshot file — nothing to plot")
         sys.exit(1)
 
+    # Forward-fill missing values so lines stay continuous
+    df.ffill(inplace=True)
+
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 8), sharex=True)
 
     x = df["order_num"]
