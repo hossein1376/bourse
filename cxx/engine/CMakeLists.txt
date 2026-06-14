@@ -3,7 +3,7 @@ add_library(engine
     src/matching_engine.cpp
 )
 
-target_include_directories(engine PUBLIC include)
+target_include_directories(engine PUBLIC include ..)
 
 target_compile_options(engine PRIVATE -Wall -Wextra -Wpedantic)
 

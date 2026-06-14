@@ -1,6 +1,7 @@
 #pragma once
 
 #include "engine/types.hpp"
+#include "util/linked_list.hpp"
 #include <optional>
 #include <unordered_map>
 
@@ -20,27 +21,25 @@ public:
   template <typename F>
   void for_each_level(Side side, Price limit, F &&fn) const {
     if (side == Side::Buy) {
-      for (const auto &[price, level] : bids) {
+      for (const auto &[price, level] : bids_) {
         if (price < limit)
           break;
-        fn(price, level.orders);
+        fn(price, level);
       }
     } else {
-      for (const auto &[price, level] : asks) {
+      for (const auto &[price, level] : asks_) {
         if (price > limit)
           break;
-        fn(price, level.orders);
+        fn(price, level);
       }
     }
   }
 
 private:
-  // TODO: Replace map-of-lists with a custom doubly-linked list per side
-  //       for O(1) price level lookup and better cache locality (PLAN.md §192).
-  //       Keep std::map for now — correctness first, optimization later.
-  std::map<Price, PriceLevel, std::greater<Price>> bids;
-  std::map<Price, PriceLevel, std::less<Price>> asks;
-  std::unordered_map<OrderID, std::list<Order>::iterator> index;
+  DoublyLinkedList<PriceLevel> bids_;
+  DoublyLinkedList<PriceLevel> asks_;
+  std::unordered_map<OrderID, std::list<Order>::iterator> order_index_;
+  std::unordered_map<Price, DoublyLinkedList<PriceLevel>::Node *> level_index_;
 };
 
 } // namespace engine
