@@ -8,8 +8,10 @@ namespace engine {
 class MatchingEngine {
 public:
   using TradeCallback = std::function<void(const TradeEvent &)>;
+  using BookCallback = std::function<void(const OrderBook &)>;
 
-  explicit MatchingEngine(TradeCallback on_trade);
+  explicit MatchingEngine(TradeCallback on_trade,
+                          BookCallback on_book = nullptr);
   const OrderBook &book() const { return book_; }
   void process_order(const Order &order);
   bool cancel_order(OrderID order_id);
@@ -23,6 +25,7 @@ private:
 
   OrderBook book_;
   TradeCallback on_trade_;
+  BookCallback on_book_;
   std::uint64_t next_trade_seq_ = 1;
 };
 

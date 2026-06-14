@@ -10,8 +10,8 @@ bool crosses(const Order &incoming, const Order &resting) {
 }
 } // namespace
 
-MatchingEngine::MatchingEngine(TradeCallback on_trade)
-    : book_(), on_trade_(std::move(on_trade)) {}
+MatchingEngine::MatchingEngine(TradeCallback on_trade, BookCallback on_book)
+    : book_(), on_trade_(std::move(on_trade)), on_book_(std::move(on_book)) {}
 
 void MatchingEngine::process_order(const Order &order) {
   if (order.quantity == 0)
@@ -19,10 +19,11 @@ void MatchingEngine::process_order(const Order &order) {
   if (order.type == OrderType::Limit && order.price == 0)
     return;
   Order incoming = order;
-  if (incoming.type == OrderType::FOK && !can_fully_fill(incoming)) {
+  if (incoming.type == OrderType::FOK && !can_fully_fill(incoming))
     return;
-  }
   match_against_book(incoming);
+  if (on_book_)
+    on_book_(book_);
 }
 
 void MatchingEngine::match_against_book(Order &incoming) {

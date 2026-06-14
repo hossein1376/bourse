@@ -666,3 +666,105 @@ TEST(MatchingEngineTest, SequenceSkipsOnRejectedFok) {
   ASSERT_EQ(h.trades.size(), 1);
   EXPECT_EQ(h.trades[0].sequence, 1);
 }
+
+struct BookTestHarness {
+  std::vector<TradeEvent> trades;
+  std::vector<const OrderBook *> books;
+  MatchingEngine engine;
+
+  BookTestHarness()
+      : engine([this](const TradeEvent &t) { trades.push_back(t); },
+               [this](const OrderBook &b) { books.push_back(&b); }) {}
+};
+
+TEST(MatchingEngineTest, BookCallbackFiresOnEachOrder) {
+  BookTestHarness h;
+
+  h.engine.process_order(Order{
+      .order_id = 1,
+      .side = Side::Sell,
+      .type = OrderType::Limit,
+      .price = 10000,
+      .quantity = 10,
+  });
+  h.engine.process_order(Order{
+      .order_id = 2,
+      .side = Side::Buy,
+      .type = OrderType::Market,
+      .price = 0,
+      .quantity = 5,
+  });
+
+  EXPECT_EQ(h.books.size(), 2);
+  ASSERT_FALSE(h.books[0]->empty(Side::Sell));
+  EXPECT_EQ(h.books[0]->best_ask()->price, 10000);
+
+  ASSERT_FALSE(h.books[1]->empty(Side::Sell));
+  EXPECT_EQ(h.books[1]->best_ask()->quantity, 5);
+  ASSERT_TRUE(h.books[1]->empty(Side::Buy));
+}
+
+TEST(MatchingEngineTest, DeterministicReplay) {
+  std::vector<Order> orders = {
+      {.order_id = 1,
+       .side = Side::Sell,
+       .type = OrderType::Limit,
+       .price = 10000,
+       .quantity = 10},
+      {.order_id = 2,
+       .side = Side::Buy,
+       .type = OrderType::Market,
+       .price = 0,
+       .quantity = 5},
+      {.order_id = 3,
+       .side = Side::Buy,
+       .type = OrderType::Limit,
+       .price = 9900,
+       .quantity = 5},
+      {.order_id = 4,
+       .side = Side::Sell,
+       .type = OrderType::Limit,
+       .price = 10100,
+       .quantity = 10},
+      {.order_id = 5,
+       .side = Side::Buy,
+       .type = OrderType::IOC,
+       .price = 10200,
+       .quantity = 3},
+      {.order_id = 6,
+       .side = Side::Buy,
+       .type = OrderType::FOK,
+       .price = 10300,
+       .quantity = 7},
+      {.order_id = 7,
+       .side = Side::Buy,
+       .type = OrderType::Limit,
+       .price = 10100,
+       .quantity = 12},
+      {.order_id = 8,
+       .side = Side::Sell,
+       .type = OrderType::Limit,
+       .price = 9900,
+       .quantity = 20},
+  };
+
+  auto run = [&](std::vector<TradeEvent> &out) {
+    MatchingEngine eng([&](const TradeEvent &t) { out.push_back(t); });
+    for (const auto &o : orders)
+      eng.process_order(o);
+  };
+
+  std::vector<TradeEvent> run1, run2;
+  run(run1);
+  run(run2);
+
+  ASSERT_EQ(run1.size(), run2.size());
+  for (size_t i = 0; i < run1.size(); ++i) {
+    EXPECT_EQ(run1[i].taker_order_id, run2[i].taker_order_id);
+    EXPECT_EQ(run1[i].maker_order_id, run2[i].maker_order_id);
+    EXPECT_EQ(run1[i].taker_side, run2[i].taker_side);
+    EXPECT_EQ(run1[i].price, run2[i].price);
+    EXPECT_EQ(run1[i].quantity, run2[i].quantity);
+    EXPECT_EQ(run1[i].sequence, run2[i].sequence);
+  }
+}
