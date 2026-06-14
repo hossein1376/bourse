@@ -43,6 +43,10 @@ CLIArgs parse_args(int argc, char *argv[]) {
       args.fok_pct = std::stoi(next());
     else if (flag == "--output")
       args.output_path = next();
+    else if (flag == "--snapshot")
+      args.snapshot_interval = std::stoi(next());
+    else if (flag == "--snapshot-output")
+      args.snapshot_path = next();
   }
   return args;
 }
@@ -132,6 +136,15 @@ int main(int argc, char *argv[]) {
     }
   });
 
+  // Snapshot CSV
+  std::ofstream snap_csv;
+  if (args.snapshot_interval > 0) {
+    if (args.snapshot_path.empty())
+      args.snapshot_path = "book_snapshots.csv";
+    snap_csv.open(args.snapshot_path);
+    snap_csv << "order_num,best_bid,bid_qty,best_ask,ask_qty,spread\n";
+  }
+
   Price mid = args.mid_price;
   engine::OrderID next_id = 1;
 
@@ -177,7 +190,26 @@ int main(int argc, char *argv[]) {
     });
 
     stats.orders_submitted++;
+
+    if (args.snapshot_interval > 0 && stats.orders_submitted % args.snapshot_interval == 0) {
+      auto best_bid = engine.book().best_bid();
+      auto best_ask = engine.book().best_ask();
+      snap_csv << stats.orders_submitted << ","
+               << (best_bid.has_value() ? std::to_string(best_bid->price) : "") << ","
+               << (best_bid.has_value() ? std::to_string(best_bid->quantity) : "") << ","
+               << (best_ask.has_value() ? std::to_string(best_ask->price) : "") << ","
+               << (best_ask.has_value() ? std::to_string(best_ask->quantity) : "") << ","
+               << (best_bid.has_value() && best_ask.has_value()
+                       ? std::to_string(best_ask->price - best_bid->price)
+                       : "")
+               << "\n";
+    }
   }
 
   engine::print_summary(args, stats, engine.book(), seed);
+
+  if (args.snapshot_interval > 0) {
+    std::cout << "\nSnapshots written to " << args.snapshot_path << "\n";
+    std::cout << "Plot with: scripts/run_generator.sh plot " << args.snapshot_path << "\n";
+  }
 }

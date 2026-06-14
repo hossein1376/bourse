@@ -19,6 +19,8 @@ struct CLIArgs {
   int ioc_pct = 10;
   int fok_pct = 10;
   std::string output_path;
+  int snapshot_interval = 0;
+  std::string snapshot_path;
 };
 
 struct Stats {
